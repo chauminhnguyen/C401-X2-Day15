@@ -1,0 +1,62 @@
+graph TD
+    %% --- 1. Lớp Giao Diện & UX Layer ---
+    subgraph UX_Layer [1. UX & Trust Layer]
+        User["Bác sĩ / Điều dưỡng"] --> UI["Chat Interface & Citation Viewer"]
+        UI --> HITL["Human-in-the-loop Interface (Xác nhận/Chỉnh sửa)"]
+        HITL --> Final_Action["Ghi vào EMR / Thực hiện lệnh"]
+    end
+
+    %% --- 2. Lớp Bảo Mật & Gateway ---
+    subgraph Security_Layer [2. Advanced Security & Guardrails]
+        UI --> API_GW["API Gateway (Rate Limiting & WAF)"]
+        API_GW --> Auth["IAM & Clinical RBAC (Phân quyền theo khoa/phòng)"]
+        Auth --> In_Guard["Input Guardrails (Chặn Prompt Injection, Jailbreak)"]
+        In_Guard --> PII_Anonymize["PII Masking (De-identification dữ liệu bệnh nhân)"]
+    end
+
+    %% --- 3. Lớp AI Orchestration (RAG Nâng cao) ---
+    subgraph AI_Engine [3. RAG Pipeline with Hybrid Search]
+        PII_Anonymize --> Router{"Intent Router"}
+        
+        Router -- "Chuyên môn/Quy trình" --> Hybrid_Search
+        
+        subgraph Retrieval_Engine [Hybrid Retrieval]
+            Hybrid_Search --> Vector_Search["Vector Search (Semantic)"]
+            Hybrid_Search --> Keyword_Search["BM25 Search (Keyword)"]
+            Vector_Search --> RRF["RRF - Reciprocal Rank Fusion"]
+            Keyword_Search --> RRF
+        end
+
+        RRF --> Rerank["Cross-Encoder Reranker"]
+        Rerank --> Context_Builder["Context & Citation Builder"]
+        Context_Builder --> Core_LLM["Enterprise LLM (GPT-4o / Claude 3.5)"]
+        
+        Core_LLM --> Citations["Source Attribution (Trích nguồn từ Doc ID/Page)"]
+        Citations --> Out_Guard["Output Guardrails (Check Hallucination, Ethics, Bias)"]
+    end
+
+    %% --- 4. Dữ liệu & ETL ---
+    subgraph Data_Layer [4. Data Sovereignty]
+        HIS_EMR[("Hệ thống HIS / EMR Legacy")] --> ETL_Proc["ETL & Chunking Pipeline"]
+        Internal_Docs[("Quy trình nội bộ / PDF")] --> ETL_Proc
+        ETL_Proc --> Vector_DB[("Vector DB - Milvus/Pinecone")]
+        ETL_Proc --> Keyword_Index[("Elasticsearch / Meilisearch")]
+    end
+
+    %% --- 5. Monitoring & LLMOps ---
+    subgraph Monitoring_Layer [5. Full-stack Observability]
+        Dashboard["Admin & Ethics Dashboard"]
+        
+        subgraph Metrics
+            M1["Infra (CPU, Latency, Error Rate)"]
+            M2["AI Core (Token Usage, Hallucination Rate)"]
+            M3["User Metrics (Satisfaction, HITL Overrides)"]
+        end
+        
+        Out_Guard -.-> Log_Trace["Logging & Tracing (LangSmith/Arize)"]
+        Log_Trace --> Metrics
+        Metrics --> Dashboard
+        Dashboard --> Alert["Alerting System (PagerDuty)"]
+    end
+
+    Out_Guard --> HITL
